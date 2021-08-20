@@ -3,13 +3,15 @@ package cf.itoncek.deathstructure;
 import cf.itoncek.deathstructure.items.CraftableBlocks;
 import cf.itoncek.deathstructure.listener.BlockPlaceListener;
 import cf.itoncek.deathstructure.listener.PlayerDeathListener;
+import org.bukkit.Bukkit;
+import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import java.io.File;
-import java.io.IOException;
-import java.io.InputStream;
+import java.io.*;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.URL;
+import java.net.URLConnection;
 import java.nio.file.*;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -22,6 +24,24 @@ public final class DeathStructure extends JavaPlugin {
 
     @Override
     public void onEnable() {
+        FileConfiguration config = this.getConfig();
+        config.addDefault("userID", "");
+        config.addDefault("licenceID", "");
+        config.options().copyDefaults(true);
+        saveConfig();
+
+        if (config.get("userID") == "" || config.get("licenceID") == "") {
+            System.out.println("You need to fill the Config for my plugin to work. If you don't have credintials, contact me on Discord/Instagram. Now I'm stopping this server.");
+            Bukkit.getServer().shutdown();
+        } else {
+            try {
+                verify(config.getString("userID"), config.getString("licenceID"));
+            } catch (Exception e) {
+                e.printStackTrace();
+                System.out.println("There was an error, try it again in a few seconds or go to \"https://l.itoncek.cf\" to check, if the licence server is responding. If not, contact me on Discord/Instagram");
+                Bukkit.getServer().shutdown();
+            }
+        }
         plugin = this;
         getServer().getPluginManager().registerEvents(new PlayerDeathListener(), this);
         getServer().getPluginManager().registerEvents(new BlockPlaceListener(), this);
@@ -36,6 +56,27 @@ public final class DeathStructure extends JavaPlugin {
         CraftableBlocks.initRecipes(this);
         exportAllResourceLocales();
         getCommand("giveallstructures").setExecutor(new GiveAllStructuresCommand());
+    }
+
+    public static void verify(String id, String licence) throws Exception {
+        URL licenceserver = new URL("https://l.itoncek.cf/verify/" + id + "/" + licence + "/");
+        URLConnection yc = licenceserver.openConnection();
+        BufferedReader in = new BufferedReader(
+                new InputStreamReader(
+                        yc.getInputStream()));
+        String inputLine = in.readLine();
+        System.out.println(inputLine);
+
+        if ((inputLine = in.readLine()) != null) {
+            if (inputLine == "200 OK") {
+                System.out.println("Verified, Your server is OK");
+                return;
+            } else {
+                System.out.println("There was an error, try it again in a few seconds or go to \"https://l.itoncek.cf\" to check, if the licence server is responding. If not, contact me on Discord/Instagram");
+                Bukkit.getServer().shutdown();
+            }
+        }
+        in.close();
     }
 
     private void exportAllResourceLocales() {
